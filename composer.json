@@ -1,5 +1,5 @@
 {
-    "name": "moqiaoduo/php-remix",
+    "name": "php-remix/framework",
     "description": "A PHP Framework with mixed components",
     "type": "library",
     "require": {

@@ -4,6 +4,7 @@ namespace PhpRemix;
 
 use DI\Container;
 use DI\ContainerBuilder;
+use PhpRemix\Foundation\Exception\ExceptionHandler;
 use PhpRemix\Foundation\Exception\NotAllowReinitializeException;
 use Whoops\Handler\PrettyPageHandler;
 use Whoops\Run;
@@ -30,6 +31,27 @@ class Application
     private static $instance;
 
     /**
+     * 运行指令
+     *
+     * @var array
+     */
+    private $run = [];
+
+    /**
+     * 应用结束指令
+     *
+     * @var array
+     */
+    private $terminated = [];
+
+    /**
+     * 异常处理器
+     *
+     * @var ExceptionHandler
+     */
+    private $exceptionHandler;
+
+    /**
      * 应用初始化
      *
      * @param string|array $configs DI注入配置
@@ -54,6 +76,9 @@ class Application
         $this->container = $builder->build();
 
         self::$instance = $this;
+
+        $this->exceptionHandler = new ExceptionHandler();
+        $this->exceptionHandler->register();
     }
 
     /**
@@ -106,5 +131,36 @@ class Application
         $whoops->pushHandler(new PrettyPageHandler);
 
         $whoops->register();
+    }
+
+    /**
+     * 运行应用
+     * 顺序很重要，千万不能弄反
+     */
+    public function run()
+    {
+        // 运行指令
+        foreach ($this->run as $run) {
+            /**
+             * run格式：
+             * ['type' => 'DI', 'name' => ClassOrAlias, 'method' => '']
+             * ['type' => 'callable', 'callable' => [new Class, dispatch]]
+             *
+             * type 目前仅支持 DI 或 callable
+             * 调用提供参数：$app
+             */
+
+            $type = $run['type'];
+
+            switch ($type) {
+                case 'DI':
+                    $method = $run['method'];
+                    $this->get($run['name'])->$method($this); // 传入自己
+                break;
+                case 'callable':
+                    call_user_func($run['callable'], $this); // 传入自己
+                break;
+            }
+        }
     }
 }

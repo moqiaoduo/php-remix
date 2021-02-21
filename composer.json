@@ -1,0 +1,33 @@
+{
+    "name": "moqiaoduo/php-remix",
+    "description": "A PHP Framework with mixed components",
+    "type": "library",
+    "require": {
+        "php": ">=7.2",
+        "php-di/php-di": "^6.3",
+        "doctrine/annotations": "^1.11",
+        "monolog/monolog": "^2.2"
+    },
+    "require-dev": {
+        "symfony/var-dumper": "^5.2",
+        "filp/whoops": "^2.9",
+        "phpunit/phpunit": "^8.5"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "moqiaoduo",
+            "email": "415372363@qq.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "PhpRemix\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\": "tests/"
+        }
+    }
+}

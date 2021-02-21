@@ -68,7 +68,7 @@ class Application
             Application::class => factory(function () {
                 return $this;
             }),
-            'app' => get(Application::class),
+            'app' => get(Application::class)
         ]);
 
         $builder->addDefinitions($configs);
@@ -79,6 +79,11 @@ class Application
 
         $this->exceptionHandler = new ExceptionHandler();
         $this->exceptionHandler->register();
+    }
+
+    public function setExceptionHandler($handler)
+    {
+
     }
 
     /**
@@ -133,9 +138,67 @@ class Application
         $whoops->register();
     }
 
+    public function addRun($run)
+    {
+        if (empty($run['type']) || !in_array($run['type'], ['DI', 'callable'])) {
+            throw new \InvalidArgumentException("not allow param");
+        }
+
+        $this->run[] = $run;
+    }
+
+    public function addTerminated($terminated)
+    {
+        if (empty($terminated['type'])) {
+            throw new \InvalidArgumentException("Empty type param");
+        }
+
+        if (!in_array($terminated['type'], ['DI', 'callable'])) {
+            throw new \InvalidArgumentException("Type [{$terminated['type']}] is not allow");
+        }
+
+        $this->terminated[] = $terminated;
+    }
+
+    /**
+     * 应用结束或中止触发
+     * 不需要手动调用
+     *
+     * @throws \DI\DependencyException
+     * @throws \DI\NotFoundException
+     */
+    public function terminated()
+    {
+        // 运行指令
+        foreach ($this->terminated as $terminated) {
+            /**
+             * terminated格式：
+             * ['type' => 'DI', 'name' => ClassOrAlias, 'method' => '']
+             * ['type' => 'callable', 'callable' => [new Class, dispatch]]
+             *
+             * type 目前仅支持 DI 或 callable
+             * 调用提供参数：$app
+             */
+
+            $type = $terminated['type'];
+
+            switch ($type) {
+                case 'DI':
+                    $method = $terminated['method'];
+                    $this->get($terminated['name'])->$method($this); // 传入自己
+                    break;
+                case 'callable':
+                    call_user_func($terminated['callable'], $this); // 传入自己
+                    break;
+            }
+        }
+    }
+
     /**
      * 运行应用
      * 顺序很重要，千万不能弄反
+     *
+     * @throws
      */
     public function run()
     {

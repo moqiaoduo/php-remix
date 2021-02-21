@@ -2,8 +2,6 @@
 
 namespace PhpRemix\Foundation;
 
-use PhpRemix\Application;
-
 abstract class Facade
 {
     /**

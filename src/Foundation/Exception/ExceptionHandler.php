@@ -2,6 +2,8 @@
 
 namespace PhpRemix\Foundation\Exception;
 
+use Monolog\Logger;
+use PhpRemix\Facade\App;
 use Throwable;
 
 /**
@@ -9,8 +11,6 @@ use Throwable;
  */
 class ExceptionHandler
 {
-    private $view = 'error';
-
     public $memoryReserveSize = 262144;//备用内存大小
 
     private $_memoryReserve;//备用内存
@@ -51,6 +51,9 @@ class ExceptionHandler
             $this->report($exception);
             exit(1);
         }
+
+        // 正常情况下，应该执行terminated
+        App::terminated();
     }
 
     public function handleError($code, $message, $file, $line)
@@ -80,26 +83,9 @@ class ExceptionHandler
      */
     public function render($exception)
     {
-
-
-        try {
-            if (CLI_MODE) {
-                echo "***System error***\n";
-                echo $exception->getMessage() . "\n\n";
-                debug_print_backtrace();
-            } else {
-                ob_end_clean();
-                http_response_code(500);
-                $view = \View::make($this->view, ['e' => $exception, 'show' => \App::config('debug')]);
-                if ($view->isExist())
-                    $view->render();
-                else
-                    echo "Error, and no default error page.";
-            }
-        } catch (ClassNotExistException $e) {
-            // 万一连这个都坏了，为了避免死循环，将会直接输出以下文本
-            echo "App broken, you should check the completeness of the system.";
-        }
+        echo "***System error***\n";
+        echo $exception->getMessage() . "\n\n";
+        debug_print_backtrace();
     }
 
     /**
@@ -109,16 +95,10 @@ class ExceptionHandler
      */
     public function report(Throwable $exception)
     {
+        $logger = App::get('Logger');
 
-        $log_dir = APP_ROOT . '/runtime/logs';
-        if (!is_dir($log_dir))
-            mkdir($log_dir, 0755, true);
-
-        $filename = $log_dir . '/' . date('Ymd') . '.log';
-        $handle = fopen($filename, "a+");
-        fwrite($handle, "[" . date('Y-m-d H:i:s') . "] system error: {$exception->getMessage()} at ".
-            "{$exception->getFile()}:{$exception->getLine()}\n");
-        fwrite($handle, "{$exception->getTraceAsString()}\n");
-        fclose($handle);
+        if ($logger instanceof Logger) {
+            $logger->error("message: " . $exception->getMessage());
+        }
     }
 }

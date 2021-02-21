@@ -1,6 +1,6 @@
 <?php
 
-namespace PhpRemix;
+namespace PhpRemix\Foundation;
 
 use DI\Container;
 use DI\ContainerBuilder;

@@ -3,7 +3,7 @@
 namespace Test\Container;
 
 use Monolog\Logger;
-use PhpRemix\Application;
+use PhpRemix\Foundation\Application;
 use PHPUnit\Framework\TestCase;
 use function DI\create;
 use function DI\factory;
@@ -12,9 +12,9 @@ class DITest extends TestCase
 {
     public function testMake()
     {
-        $app = new Application([
-            'test' => create(Logger::class)->constructor('test'),
-        ]);
+        $app = new Application();
+
+        $app->set('test', create(Logger::class)->constructor('test'));
 
         $obj1 = $app->make('test');
         $obj2 = $app->make('test');
@@ -24,9 +24,9 @@ class DITest extends TestCase
 
     public function testGet()
     {
-        $app = new Application([
-            'test' => create(Logger::class)->constructor('test'),
-        ]);
+        $app = new Application();
+
+        $app->set('test', create(Logger::class)->constructor('test'));
 
         $obj1 = $app->get('test');
         $obj2 = $app->get('test');
@@ -36,11 +36,11 @@ class DITest extends TestCase
 
     public function testFactory()
     {
-        $app = new Application([
-            'test' => factory(function () {
-                return new Logger('test');
-            }),
-        ]);
+        $app = new Application();
+
+        $app->set('test', factory(function () {
+            return new Logger('test');
+        }));
 
         $obj1 = $app->get('test');
         $obj2 = $app->get('test');

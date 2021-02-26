@@ -15,7 +15,9 @@ abstract class Facade
      */
     public static function __callStatic($name, $arguments)
     {
-        return Application::getInstance()->get(static::getFacadeAliasName())->$name(...$arguments);
+        $app = Application::getInstance();
+
+        return $app->call([$app->get(static::getFacadeAliasName()), $name], $arguments);
     }
 
     /**

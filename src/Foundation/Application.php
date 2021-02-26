@@ -8,7 +8,7 @@ use PhpRemix\Foundation\Exception\ExceptionHandler;
 use PhpRemix\Foundation\Exception\NotAllowReinitializeException;
 use Whoops\Handler\PrettyPageHandler;
 use Whoops\Run;
-use function DI\factory;
+use function DI\create;
 use function DI\get;
 
 /**
@@ -52,26 +52,40 @@ class Application
     private $exceptionHandler;
 
     /**
+     * @var string
+     */
+    private $basePath;
+
+    /**
      * 应用初始化
      *
-     * @param string|array $configs DI注入配置
+     * @param string|null $basePath
      * @throws \Exception
      */
-    public function __construct($configs = [])
+    public function __construct($basePath = null)
     {
         if (!is_null(self::$instance))
             throw new NotAllowReinitializeException("Application has been already initial.");
 
+        $this->basePath = $basePath;
+
         $builder = new ContainerBuilder();
 
+        /**
+         * 依赖加载顺序：
+         * 1. 框架内部
+         * 2. di.php
+         * 3. 外部依赖
+         */
+
         $builder->addDefinitions([
-            Application::class => factory(function () {
-                return $this;
-            }),
-            'app' => get(Application::class)
+            Application::class => $this,
+            'app' => get(Application::class),
         ]);
 
-        $builder->addDefinitions($configs);
+        if (file_exists($diFile = $this->getConfigPath('di.php'))) {
+            $builder->addDefinitions($diFile); // 自定义依赖注入
+        }
 
         $this->container = $builder->build();
 
@@ -81,9 +95,16 @@ class Application
         $this->exceptionHandler->register();
     }
 
+    /**
+     * 重新设置ExceptionHandler
+     *
+     * @param $handler
+     */
     public function setExceptionHandler($handler)
     {
-
+        $this->exceptionHandler->unregister();
+        $this->exceptionHandler = $handler;
+        $this->exceptionHandler->register();
     }
 
     /**
@@ -138,6 +159,11 @@ class Application
         $whoops->register();
     }
 
+    /**
+     * 添加运行插件
+     *
+     * @param $run
+     */
     public function addRun($run)
     {
         if (empty($run['type']) || !in_array($run['type'], ['DI', 'callable'])) {
@@ -147,6 +173,11 @@ class Application
         $this->run[] = $run;
     }
 
+    /**
+     * 添加销毁插件
+     *
+     * @param $terminated
+     */
     public function addTerminated($terminated)
     {
         if (empty($terminated['type'])) {
@@ -158,6 +189,40 @@ class Application
         }
 
         $this->terminated[] = $terminated;
+    }
+
+    /**
+     * 是否存在依赖
+     *
+     * @param $name
+     * @return bool
+     */
+    public function has($name): bool
+    {
+        return $this->container->has($name);
+    }
+
+    /**
+     * 设置DI
+     *
+     * @param string $name
+     * @param $value
+     */
+    public function set(string $name, $value)
+    {
+        $this->container->set($name, $value);
+    }
+
+    /**
+     * 带依赖注入的调用
+     *
+     * @param $callable
+     * @param array $parameters
+     * @return mixed
+     */
+    public function call($callable, array $parameters = [])
+    {
+        return $this->container->call($callable, $parameters);
     }
 
     /**
@@ -184,11 +249,10 @@ class Application
 
             switch ($type) {
                 case 'DI':
-                    $method = $terminated['method'];
-                    $this->get($terminated['name'])->$method($this); // 传入自己
+                    $this->container->call([$this->get($terminated['name']), $terminated['method']]);
                     break;
                 case 'callable':
-                    call_user_func($terminated['callable'], $this); // 传入自己
+                    $this->container->call($terminated['callable']);
                     break;
             }
         }
@@ -217,13 +281,82 @@ class Application
 
             switch ($type) {
                 case 'DI':
-                    $method = $run['method'];
-                    $this->get($run['name'])->$method($this); // 传入自己
+                    $this->container->call([$this->get($run['name']), $run['method']]);
                 break;
                 case 'callable':
-                    call_user_func($run['callable'], $this); // 传入自己
+                    $this->container->call($run['callable']);
                 break;
             }
         }
+    }
+
+    /**
+     * 取根路径
+     *
+     * @return string|null
+     */
+    public function getBasePath(): ?string
+    {
+        return $this->basePath;
+    }
+
+    /**
+     * 取config路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getConfigPath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'config' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
+    }
+
+    /**
+     * 取app路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getAppPath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'app' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
+    }
+
+    /**
+     * 取bootstrap路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getBootstrapPath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'bootstrap' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
+    }
+
+    /**
+     * 取databases路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getDatabasesPath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'storage' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
+    }
+
+    /**
+     * 取storage路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getStoragePath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'storage' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
     }
 }

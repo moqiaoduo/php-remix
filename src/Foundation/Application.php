@@ -4,15 +4,17 @@ namespace PhpRemix\Foundation;
 
 use DI\Container;
 use DI\ContainerBuilder;
+use DI\Definition\Source\DefinitionSource;
 use PhpRemix\Foundation\Exception\ExceptionHandler;
 use PhpRemix\Foundation\Exception\NotAllowReinitializeException;
 use Whoops\Handler\PrettyPageHandler;
 use Whoops\Run;
-use function DI\create;
 use function DI\get;
 
 /**
  * 主应用入口
+ * 正确执行顺序：
+ * 构造函数->addDefinitions->setExceptionHandler(可选)->init->addRun(可选)->run(可选)
  */
 class Application
 {
@@ -57,6 +59,11 @@ class Application
     private $basePath;
 
     /**
+     * @var ContainerBuilder
+     */
+    private $containerBuilder;
+
+    /**
      * 应用初始化
      *
      * @param string|null $basePath
@@ -69,14 +76,7 @@ class Application
 
         $this->basePath = $basePath;
 
-        $builder = new ContainerBuilder();
-
-        /**
-         * 依赖加载顺序：
-         * 1. 框架内部
-         * 2. di.php
-         * 3. 外部依赖
-         */
+        $this->containerBuilder = $builder = new ContainerBuilder();
 
         $builder->addDefinitions([
             Application::class => $this,
@@ -87,22 +87,41 @@ class Application
             $builder->addDefinitions($diFile); // 自定义依赖注入
         }
 
-        $this->container = $builder->build();
-
         self::$instance = $this;
+    }
 
-        $this->exceptionHandler = new ExceptionHandler();
-        $this->exceptionHandler->register();
+    /**
+     * 添加外部依赖
+     *
+     * @param string|array|DefinitionSource ...$definitions
+     */
+    public function addDefinitions(...$definitions)
+    {
+        $this->containerBuilder->addDefinitions(...$definitions);
+    }
+
+    /**
+     * 初始化app
+     *
+     * @throws \Exception
+     */
+    public function init()
+    {
+        $this->container = $this->containerBuilder->build();
+
+        if (is_null($this->exceptionHandler))
+            $this->setExceptionHandler(new ExceptionHandler());
     }
 
     /**
      * 重新设置ExceptionHandler
      *
-     * @param $handler
+     * @param ExceptionHandler $handler
      */
-    public function setExceptionHandler($handler)
+    public function setExceptionHandler(ExceptionHandler $handler)
     {
-        $this->exceptionHandler->unregister();
+        if (!is_null($this->exceptionHandler))
+            $this->exceptionHandler->unregister();
         $this->exceptionHandler = $handler;
         $this->exceptionHandler->register();
     }

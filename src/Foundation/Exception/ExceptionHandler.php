@@ -95,6 +95,8 @@ class ExceptionHandler
      */
     public function report(Throwable $exception)
     {
+        if (!App::has('Logger')) return;
+
         $logger = App::get('Logger');
 
         if ($logger instanceof Logger) {

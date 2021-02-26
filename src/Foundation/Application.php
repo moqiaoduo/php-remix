@@ -368,6 +368,18 @@ class Application
     }
 
     /**
+     * 取public路径
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getPublicPath($path = ''): string
+    {
+        return $this->basePath . DIRECTORY_SEPARATOR . 'public' .
+            ($path == '' ? $path : DIRECTORY_SEPARATOR . $path);
+    }
+
+    /**
      * 取storage路径
      *
      * @param string $path
